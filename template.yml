@@ -1,0 +1,79 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Un ejemplo de Lambda que registra datos en DynamoDB y utiliza API Gateway
+
+Resources:
+  MyTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MyTable
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+  MyFunctionRegister:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./src
+      Handler: index.RegisterData
+      Runtime: nodejs12.x
+      Policies: 
+        - DynamoDBCrudPolicy:
+            TableName: !Ref MyTable
+      Events:
+        MyApi:
+          Type: Api
+          Properties:
+            Path: /items
+            Method: post
+            RestApiId: !Ref MyApi
+  
+  MyFunctionQueryAll:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./src
+      Handler: index.GetAllData
+      Runtime: nodejs12.x
+      Policies:
+        - DynamoDBCrudPolicy: 
+            TableName: !Ref MyTable
+      Events:
+        MyApi:
+          Type: Api
+          Properties:
+            Path: /items
+            Method: get
+            RestApiId: !Ref MyApi
+
+  MyFunctionQueryGet:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./src
+      Handler: index.GetData
+      Runtime: nodejs12.x
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref MyTable
+      Events:
+        MyApi: 
+          Type: Api
+          Properties:
+            Path: /items/{id}
+            Method: get
+            RestApiId: !Ref MyApi  
+
+  MyApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+
+Outputs:
+  MyApiEndpoint:
+    Value:
+      Fn::Sub: https://${MyApi}.execute-api.${AWS::Region}.amazonaws.com/prod
